@@ -5,6 +5,7 @@ PROGRAM_NAME='MyCondInit'
 1,3,20,0,1,0,30,0,19,0,1,0,7,0,1,0,0,0,1,0,0,0,0,140,149
 *)
 
+
 DEFINE_DEVICE
 (***********************************************************)
 (*                    ПОРТЫ MODBUS                         *)
@@ -125,12 +126,12 @@ DEVLEV TP_UI2_T_S = {dv_TP_control_pannel, 11};
 DEVLEV UI2_T_S = {vdvMyCondUI2, 1};
 
 DEFINE_VARIABLE
-volatile char REC1_COM1 [50];
-volatile char REC2_COM1 [50];
+
+volatile char OutgoingModbusBuffer[10][8];
 
 //Pannel ID = 1;
 volatile char Pannel_1_ID = 1;
-
+volatile char IgnoreNewVal_P1 = 0;
 non_volatile char MycondPan1OldStates [6] = {0,0,0,0,0,0};
 non_volatile char MycondPan1NewStates [6] = {0,0,0,0,0,0};
 (*
@@ -146,6 +147,7 @@ non_volatile char MycondPan1NewStates [6] = {0,0,0,0,0,0};
 
 //Pannel ID = 2;
 volatile char Pannel_2_ID = 2;
+volatile char IgnoreNewVal_P2 = 0;
 non_volatile char MycondPan2OldStates [6] = {0,0,0,0,0,0};
 non_volatile char MycondPan2NewStates [6] = {0,0,0,0,0,0};
 
@@ -157,12 +159,33 @@ volatile DEV vdvMyCondOnBus_1_UI[] =
     vdvMyCondUI2
 };
 
-volatile char MycondModbus_1_Timeout = 0;
-volatile char CMD_SENT_MB1 = 0;
-
-DEFINE_MODULE 'MyCondModbus' mdlMycondBUS_1 (dvModbus1PhyPort, vdvModbusPort1, vdvMyCondOnBus_1_UI, REC1_COM1, REC2_COM1, MycondModbus_1_Timeout,CMD_SENT_MB1);
-DEFINE_MODULE 'MyCondUI' mdlMycondUI_1 (vdvMyCondUI1, vdvModbusPort1, Pannel_1_ID, MycondPan1OldStates, MycondPan1NewStates);
-DEFINE_MODULE 'MyCondUI' mdlMycondUI_2 (vdvMyCondUI2, vdvModbusPort1, Pannel_2_ID, MycondPan2OldStates, MycondPan2NewStates);
+volatile char MycondModbus_1_AnswerWaitFlag = 0;  //флаг с номером девайса от которого ждем ответ
+volatile char ModBus_1_updateTime = 20;   //Время опроса шины
+volatile char ModBus_1_TimeOutTime = 10;   //Время таймаута одногоустройства на шине
+//Модуль шины
+DEFINE_MODULE 'MyCondModbus' mdlMycondBUS_1 (
+						dvModbus1PhyPort, 
+						vdvModbusPort1, 
+						vdvMyCondOnBus_1_UI, 
+						OutgoingModbusBuffer, 
+						MycondModbus_1_AnswerWaitFlag,
+						ModBus_1_updateTime,
+						ModBus_1_TimeOutTime);
+//Модули панелей
+DEFINE_MODULE 'MyCondUI' mdlMycondUI_1 (
+					    vdvMyCondUI1, 
+					    vdvModbusPort1, 
+					    Pannel_1_ID, 
+					    MycondPan1OldStates, 
+					    MycondPan1NewStates,
+					    IgnoreNewVal_P1);
+DEFINE_MODULE 'MyCondUI' mdlMycondUI_2 (
+					    vdvMyCondUI2, 
+					    vdvModbusPort1, 
+					    Pannel_2_ID, 
+					    MycondPan2OldStates, 
+					    MycondPan2NewStates,
+					    IgnoreNewVal_P2);
 
 DEFINE_EVENT
 DATA_EVENT[vdvMyCondUI1]
